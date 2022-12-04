@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:sec="http://www.springframework.org/schema/security"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/security https://www.springframework.org/schema/security/spring-security.xsd">
+
+    <context:component-scan base-package="com.jdc.leaves.model.service"/>
+
+    <bean id="passwordEncoder"
+          class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder"/>
+
+    <bean id="dataSource"
+          class="org.apache.commons.dbcp.BasicDataSource"
+          p:url="jdbc:mysql://localhost:3306/leaves_db"
+          p:username="leavesusr"
+          p:password="leavespwd"/>
+    <bean id="leaveUserService" class="com.jdc.leaves.model.security.LeaveApplicationUserService">
+        <constructor-arg ref="dataSource" />
+    </bean>
+
+
+
+    <sec:authentication-manager>
+        <sec:authentication-provider user-service-ref="leaveUserService">
+            <sec:password-encoder ref="passwordEncoder"/>
+        </sec:authentication-provider>
+    </sec:authentication-manager>
+
+    <sec:http>
+        <sec:form-login login-page="/sign-in" authentication-failure-url="/sign-in?error=1"
+                        login-processing-url="/sign-in"
+                        default-target-url="/" username-parameter="username"
+                        password-parameter="password"/>
+        <sec:logout invalidate-session="true" logout-url="/sign-out" logout-success-url="/"/>
+        <sec:intercept-url pattern="/classes/**" access="hasAnyAuthority('ADMIN', 'TEACHER')" />
+        <sec:intercept-url pattern="/leaves/**" access="hasAnyAuthority('ADMIN', 'TEACHER', 'STUDENT')" />
+        <sec:intercept-url pattern="/students/**" access="hasAnyAuthority('ADMIN', 'TEACHER')" />
+        <sec:intercept-url pattern="/teachers/**" access="hasAnyAuthority('ADMIN')" />
+        <sec:intercept-url pattern="/home" access="isAuthenticated()" />
+    </sec:http>
+
+    <bean class="com.jdc.leaves.model.security.AdminUserInitializer">
+        <constructor-arg ref="dataSource"/>
+    </bean>
+
+    <bean id="transactionManager"
+          class="org.springframework.jdbc.support.JdbcTransactionManager"
+          p:dataSource-ref="dataSource"/>
+    <tx:annotation-driven transaction-manager="transactionManager" />
+
+
+</beans>
